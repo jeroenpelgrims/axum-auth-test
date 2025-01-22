@@ -1,4 +1,4 @@
-use auth::{Backend, Credentials, User};
+use auth::User;
 use axum::{
     body::Body,
     http::{header, Response, StatusCode},
@@ -25,22 +25,22 @@ mod protected;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    let session_layer = SessionManagerLayer::new(MemoryStore::default());
-    let user_id = uuid::Uuid::new_v4();
-    let backend = Backend {
-        users: vec![(
-            user_id,
-            User {
-                id: user_id,
-                name: "Joske Vermeulen".to_string(),
-                username: "user".to_string(),
-                password: "pass".to_string(),
-            },
-        )]
-        .into_iter()
-        .collect(),
-    };
-    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
+    // let session_layer = SessionManagerLayer::new(MemoryStore::default());
+    // let user_id = uuid::Uuid::new_v4();
+    // let backend = Backend {
+    //     users: vec![(
+    //         user_id,
+    //         User {
+    //             id: user_id,
+    //             name: "Joske Vermeulen".to_string(),
+    //             username: "user".to_string(),
+    //             password: "pass".to_string(),
+    //         },
+    //     )]
+    //     .into_iter()
+    //     .collect(),
+    // };
+    // let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
     let app = Router::new()
         .route("/", get(index))
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/login", post(login_post))
         .route("/logout", get(logout))
         .nest("/protected", protected::router())
-        .layer(auth_layer)
+        // .layer(auth_layer)
         .layer(LiveReloadLayer::new());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
@@ -95,81 +95,36 @@ async fn login() -> impl IntoResponse {
     )
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TokenClaims {
-    pub sub: String,
-    pub iat: i64,
-    pub exp: i64,
-    pub user: User,
+async fn login_post() -> impl IntoResponse {
+    // let user = match auth_session.authenticate(creds.clone()).await {
+    //     Ok(Some(user)) => user,
+    //     Ok(None) => return StatusCode::UNAUTHORIZED.into_response(),
+    //     Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    // };
+
+    // auth_session.login(&user).await.unwrap();
+
+    // Redirect::to("/protected").into_response()
+
+    let max_age = time::Duration::hours(1);
+    let token = auth::create_token("<user_id>".to_string(), max_age).unwrap();
+    let cookie = auth::create_token_cookie(token, max_age);
+
+    Response::builder()
+        .status(StatusCode::SEE_OTHER)
+        .header(header::LOCATION, "/")
+        .header(header::SET_COOKIE, cookie.to_string())
+        .body(Body::empty())
+        .unwrap()
 }
 
-fn create_token(
-    user_id: String,
-    max_age: time::Duration,
-) -> Result<std::string::String, jsonwebtoken::errors::Error> {
-    let now = time::OffsetDateTime::now_utc();
-    let iat = now.unix_timestamp();
-    let exp = (now + max_age).unix_timestamp();
-    let claims: TokenClaims = TokenClaims {
-        sub: user_id,
-        exp,
-        iat,
-        user: User {
-            id: uuid::Uuid::new_v4(),
-            name: "Dummy".to_string(),
-            password: "passssss".to_string(),
-            username: "dummyuser".to_string(),
-        },
-    };
-    let secret = env::var("JWT_SECRET").unwrap();
-    let encoding_key = EncodingKey::from_secret(secret.as_ref());
-    jsonwebtoken::encode(&jsonwebtoken::Header::default(), &claims, &encoding_key)
-}
+async fn logout() -> impl IntoResponse {
+    let cookie = auth::create_token_cookie("".to_owned(), Duration::hours(-1));
 
-fn create_token_cookie<'a>(token: String, max_age: Duration) -> Cookie<'a> {
-    Cookie::build(("token", token))
-        .path("/")
-        .max_age(max_age)
-        .same_site(SameSite::Lax)
-        .http_only(true)
-        .build()
-}
-
-async fn login_post(
-    mut auth_session: AuthSession<Backend>,
-    Form(creds): Form<Credentials>,
-) -> impl IntoResponse {
-    let user = match auth_session.authenticate(creds.clone()).await {
-        Ok(Some(user)) => user,
-        Ok(None) => return StatusCode::UNAUTHORIZED.into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-    };
-
-    auth_session.login(&user).await.unwrap();
-
-    Redirect::to("/protected").into_response()
-
-    // let max_age = time::Duration::hours(1);
-    // let token = create_token("<user_id>".to_string(), max_age).unwrap();
-    // let cookie = create_token_cookie(token, max_age);
-
-    // Response::builder()
-    //     .status(StatusCode::SEE_OTHER)
-    //     .header(header::LOCATION, "/")
-    //     .header(header::SET_COOKIE, cookie.to_string())
-    //     .body(Body::empty())
-    //     .unwrap()
-}
-
-async fn logout(mut auth_session: AuthSession<Backend>) -> impl IntoResponse {
-    auth_session.logout().await.unwrap();
-    // let cookie = create_token_cookie("".to_owned(), Duration::seconds(0));
-
-    // Response::builder()
-    //     .status(StatusCode::SEE_OTHER)
-    //     .header(header::LOCATION, "/")
-    //     .header(header::SET_COOKIE, cookie.to_string())
-    //     .body(Body::empty())
-    //     .unwrap()
-    Redirect::to("/")
+    Response::builder()
+        .status(StatusCode::SEE_OTHER)
+        .header(header::LOCATION, "/")
+        .header(header::SET_COOKIE, cookie.to_string())
+        .body(Body::empty())
+        .unwrap()
 }
