@@ -1,0 +1,19 @@
+[package]
+name = "clean"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+argon2 = "0.5.3"
+async-trait = "0.1.85"
+axum = "0.8.1"
+axum-extra = { version = "0.10.0", features = ["cookie"] }
+axum-login = "0.17.0"
+dotenv = "0.15.0"
+jsonwebtoken = "9.3.0"
+serde = { version = "1.0.217", features = ["derive"] }
+time = "0.3.37"
+tokio = "1.43.0"
+tower-livereload = "0.9.5"
+uuid = { version = "1.12.0", features = ["serde", "v4"] }
+watchexec = "5.0.0"
