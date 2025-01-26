@@ -12,6 +12,7 @@ axum-login = "0.17.0"
 dotenv = "0.15.0"
 jsonwebtoken = "9.3.0"
 serde = { version = "1.0.217", features = ["derive"] }
+sqlx = { version = "0.8.3", features = ["runtime-tokio", "sqlite"] }
 time = "0.3.37"
 tokio = "1.43.0"
 tower-livereload = "0.9.5"

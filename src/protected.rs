@@ -5,7 +5,7 @@ use axum::{
     Router,
 };
 
-use crate::auth::RequireAuth;
+use crate::config::auth::RequireAuth;
 
 pub fn router() -> Router {
     Router::new()
